@@ -90,7 +90,7 @@ class GenericTaskCreateView(LoginRequiredMixin, CreateView):
 
     def GetPriorityList(self):
         prior_lst = []
-        query = Task.objects.filter(deleted=False, user=self.request.user).order_by("priority")
+        query = Task.objects.filter(deleted=False).order_by("priority")
         for obj in query:
             prior_lst.append(obj.priority)
         return prior_lst
@@ -105,9 +105,11 @@ class GenericTaskCreateView(LoginRequiredMixin, CreateView):
     def UpdatePriorities(self, prior_lst, prior, id_prior):
         #prior_lst_old = self.GetPriorityList()
         id_lst = self.GetIdList()
-        print("id_lst:",id_lst)
+        print("prior:",prior)
         prior_lst.remove(prior)
         id_lst.remove(id_prior)
+        print("id_lst(r):",id_lst)
+        print("prior_lst(r):", prior_lst)
         for i in range(len(id_lst)):
             Task.objects.filter(id=id_lst[i]).update(priority=prior_lst[i])
 
@@ -126,7 +128,7 @@ class GenericTaskCreateView(LoginRequiredMixin, CreateView):
             while prior in prior_lst:
                 prior += 1
             prior_lst.append(prior)
-            #prior_lst.remove(self.object.priority)
+            prior_lst.remove(self.object.priority)
             prior_lst.sort()
             self.UpdatePriorities(prior_lst, self.object.priority, self.object.id)
         print("lst - af:",prior_lst)
