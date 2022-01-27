@@ -1,0 +1,20 @@
+<h1>All Tasks</h1>
+{% for task in tasks %} 
+{% if task.completed %}
+<del>{{forloop.counter}}. {{task.title}} - {{task.created_date}}</del>
+{% else %} 
+{{forloop.counter}}. {{task.title}} - {{task.created_date}} 
+{% endif %}
+<a href="/delete-task/{{task.id}}/">Delete Task</a>&nbsp;
+<a href="/update-task/{{task.id}}/">Update Task</a>&nbsp;
+<a href="/detail-task/{{task.id}}/">Task Details</a>&nbsp;
+<br />
+{% endfor %}
+
+<br />
+{% for page in paginator.page_range %}
+<tr>
+	<a href="?page={{ page }}">{{page}}</a
+	>&nbsp;
+</tr>
+{% endfor %}

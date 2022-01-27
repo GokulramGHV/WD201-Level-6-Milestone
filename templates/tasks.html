@@ -1,0 +1,28 @@
+<h1>Tasks Manager</h1>
+Hello, {{request.user}}!
+{{request.user.is_authenticated}}
+<h2>Search Tasks</h2>
+
+<form action="" method="GET">
+	<input type="text" name="search" />
+	<button type="submit">Search</button>
+</form>
+
+<h2>Tasks</h2>
+
+{% for task in tasks %} {{task.priority}}. {{task.title}} -
+{{task.created_date}}
+<a href="/delete-task/{{task.id}}/">Delete Task</a>&nbsp;
+<a href="/update-task/{{task.id}}/">Update Task</a>&nbsp;
+<a href="/complete_task/{{task.id}}/">Complete Task</a>&nbsp;
+<a href="/detail-task/{{task.id}}/">Task Details</a>&nbsp;
+<br />
+{% endfor %}
+
+<br />
+{% for page in paginator.page_range %}
+<tr>
+	<a href="?page={{ page }}&search={{ request.GET.search }}">{{page}}</a
+	>&nbsp;
+</tr>
+{% endfor %}

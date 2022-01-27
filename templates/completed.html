@@ -1,0 +1,11 @@
+<h1>Completed Tasks</h1>
+{% for task in tasks %} {{forloop.counter}}. {{task}} <br />
+{% endfor %}
+
+<br />
+{% for page in paginator.page_range %}
+<tr>
+	<a href="?page={{ page }}">{{page}}</a
+	>&nbsp;
+</tr>
+{% endfor %}
