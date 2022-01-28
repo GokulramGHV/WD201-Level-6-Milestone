@@ -9,15 +9,17 @@ from django.shortcuts import render
 from django.views import View
 from django.views.generic.base import TemplateView
 from django.views.generic.detail import DetailView, SingleObjectMixin
-from django.views.generic.edit import (CreateView, DeleteView, DeletionMixin,
-                                       UpdateView)
+from django.views.generic.edit import CreateView, DeleteView, DeletionMixin, UpdateView
 from django.views.generic.list import ListView
 
 from tasks.models import Task
 
+
 class AuthorisedTaskManager(LoginRequiredMixin):
     def get_queryset(self):
-        return Task.objects.filter(deleted=False, user=self.request.user).order_by("priority")
+        return Task.objects.filter(deleted=False, user=self.request.user).order_by(
+            "priority"
+        )
 
 
 class UserLoginView(LoginView):
@@ -90,32 +92,32 @@ class GenericTaskCreateView(LoginRequiredMixin, CreateView):
 
     def GetPriorityList(self):
         prior_lst = []
-        query = Task.objects.filter(deleted=False).order_by("priority")
+        query = Task.objects.filter(deleted=False, user=self.request.user).order_by(
+            "priority"
+        )
         for obj in query:
             prior_lst.append(obj.priority)
         return prior_lst
-    
+
     def GetIdList(self):
         id_lst = []
-        query = Task.objects.filter(deleted=False).order_by("priority")
+        query = Task.objects.filter(deleted=False, user=self.request.user).order_by(
+            "priority"
+        )
         for obj in query:
             id_lst.append(obj.id)
         return id_lst
 
     def UpdatePriorities(self, prior_lst, prior, id_prior):
-        #prior_lst_old = self.GetPriorityList()
+        # prior_lst_old = self.GetPriorityList()
         id_lst = self.GetIdList()
-        print("prior:",prior)
-        prior_lst.remove(prior)
+        print("prior:", prior)
+        # prior_lst.remove(prior)
         id_lst.remove(id_prior)
-        print("id_lst(r):",id_lst)
+        print("id_lst(r):", id_lst)
         print("prior_lst(r):", prior_lst)
         for i in range(len(id_lst)):
             Task.objects.filter(id=id_lst[i]).update(priority=prior_lst[i])
-
-    # def PriorityInDB(self, prior):
-    #     prior_lst = self.GetPriorityList()
-    #     return prior in prior_lst
 
     def form_valid(self, form):
         self.object = form.save()
@@ -131,8 +133,8 @@ class GenericTaskCreateView(LoginRequiredMixin, CreateView):
             prior_lst.remove(self.object.priority)
             prior_lst.sort()
             self.UpdatePriorities(prior_lst, self.object.priority, self.object.id)
-        print("lst - af:",prior_lst)
-        
+        print("lst - af:", prior_lst)
+
         return HttpResponseRedirect(self.get_success_url())
 
 
@@ -142,6 +144,52 @@ class GenericTaskUpdateView(AuthorisedTaskManager, UpdateView):
     template_name = "task_update.html"
     success_url = "/tasks"
 
+    def GetPriorityList(self):
+        prior_lst = []
+        query = Task.objects.filter(deleted=False, user=self.request.user).order_by(
+            "priority"
+        )
+        for obj in query:
+            prior_lst.append(obj.priority)
+        return prior_lst
+
+    def GetIdList(self):
+        id_lst = []
+        query = Task.objects.filter(deleted=False, user=self.request.user).order_by(
+            "priority"
+        )
+        for obj in query:
+            id_lst.append(obj.id)
+        return id_lst
+
+    def UpdatePriorities(self, prior_lst, prior, id_prior):
+        id_lst = self.GetIdList()
+        print("prior:", prior)
+        prior_lst.remove(prior)
+        id_lst.remove(id_prior)
+        print("id_lst(r):", id_lst)
+        print("prior_lst(r):", prior_lst)
+        for i in range(len(id_lst)):
+            Task.objects.filter(id=id_lst[i]).update(priority=prior_lst[i])
+
+    def form_valid(self, form):
+        self.object = form.save()
+        self.object.user = self.request.user
+        prior = self.object.priority
+        prior_lst = self.GetPriorityList()
+        self.object.save()
+        print("list - bef:", prior_lst)
+        if prior in prior_lst:
+            while prior in prior_lst:
+                prior += 1
+            prior_lst.append(prior)
+            prior_lst.remove(self.object.priority)
+            prior_lst.sort()
+            self.UpdatePriorities(prior_lst, self.object.priority, self.object.id)
+        print("lst - af:", prior_lst)
+
+        return HttpResponseRedirect(self.get_success_url())
+
 
 class GenericCompletedTaskView(LoginRequiredMixin, ListView):
     template_name = "completed.html"
@@ -149,7 +197,9 @@ class GenericCompletedTaskView(LoginRequiredMixin, ListView):
     paginate_by = 5
 
     def get_queryset(self):
-        return Task.objects.filter(completed=True, user=self.request.user).order_by("priority")
+        return Task.objects.filter(completed=True, user=self.request.user).order_by(
+            "priority"
+        )
 
 
 class GenericTaskView(LoginRequiredMixin, ListView):
@@ -171,8 +221,6 @@ class GenericTaskView(LoginRequiredMixin, ListView):
             ).order_by("priority")
 
         return tasks
-
-
 
 
 # Function Based Views
