@@ -1,6 +1,20 @@
-<h2>Title</h2>
-{{ object.title }}
-<h2>Description</h2>
-{{ object.description }}
-<h2>Created Date</h2>
-{{ object.created_date }}
+{% extends "base.html" %} {% block title %}Task Details{% endblock %}
+{#-------------#} {% block content%}
+<div class="shadow-lg rounded-lg w-1/3 p-10 bg-slate-50 text-slate-800">
+	<div class="mb-10 text-center text-5xl font-bold">Task Details</div>
+	<h2 class="text-2xl font-semibold mb-1">Title</h2>
+	<hr />
+	<div class="mt-2 mb-5 text-lg">{{ object.title }}</div>
+	
+	<h2 class="text-2xl font-semibold mb-1">Description</h2>
+	<hr />
+	<div class="mt-2 mb-5 text-lg">{{ object.description }}</div>
+	<h2 class="text-2xl font-semibold mb-1">Created Date</h2>
+	<hr />
+	<div class="mt-2 mb-5 text-lg">{{ object.created_date }}</div>
+    <h2 class="text-2xl font-semibold mb-1">Status</h2>
+	<hr />
+	<div class="mt-2 mb-5 text-lg">{% if object.completed %} Completed {%else%} Not Completed{%endif%}</div>
+</div>
+
+{%endblock%}

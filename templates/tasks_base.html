@@ -1,0 +1,49 @@
+{% extends "base.html" %} {% block title %}{% block task_title %}
+{#-------------#} {% endblock %}Tasks{% endblock %} {% block content%}
+
+<div id="content-holder" class="lg:w-1/3">
+	<div class="flow-root py-4">
+		<div class="float-left text-5xl font-bold">Hi, {{request.user}}!</div>
+		<a href="/user/logout">
+			<div
+				class="float-right text-xl font-semibold text-red-600 ml-10 pt-3 hover:text-red-400 transition"
+			>
+				Logout
+			</div>
+		</a>
+	</div>
+
+	<section class="text-slate-500 w-full py-2 text-lg">
+		{{completed_count}} of {{total_count}} tasks completed
+	</section>
+
+	{% block task_list %} {% endblock %}
+
+	<section
+		class="grid grid-cols-6 text-gray-700 text-center mb-6 gap-2 font-medium"
+	>
+		<a
+			href="?page={%if page_obj.has_previous %} {{page_obj.previous_page_number}} {% endif %}"
+			><div class="bg-slate-200 p-3 rounded-xl hover:bg-gray-300 smooth-effect">
+				Prev
+			</div></a
+		>
+
+		<div class="col-span-4 bg-slate-200 p-3 rounded-xl">
+			Page {{page_obj.number}} of {{paginator.num_pages}}
+		</div>
+		<a
+			href="?page={%if page_obj.has_next %} {{page_obj.next_page_number}} {% endif %}"
+			><div class="bg-slate-200 p-3 rounded-xl hover:bg-gray-300 smooth-effect">
+				Next
+			</div></a
+		>
+	</section>
+
+	<section class="mb-10">
+		<a href="/create-task">
+			<div class="btn-red-lg text-center">Add</div>
+		</a>
+	</section>
+</div>
+{% endblock %}

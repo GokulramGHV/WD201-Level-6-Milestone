@@ -21,9 +21,9 @@ from django.urls import path
 from tasks.views import *
 
 urlpatterns = [
+    path("", RedirectRootToTasks.as_view()),
     path("admin/", admin.site.urls),
     path("tasks/", GenericTaskView.as_view()),
-    path("add-task/", add_task_view),
     path("user/signup/", UserCreateView.as_view()),
     path("user/login/", UserLoginView.as_view()),
     path("user/logout/", LogoutView.as_view()),
