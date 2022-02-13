@@ -82,40 +82,36 @@ class GenericTaskDetailView(AuthorisedTaskManager, DetailView):
     template_name = "task_detail.html"
 
 
-def dup_elems(lst, element):
-    '''
-    Returns a list of duplicate priority elements in the given list of Tasks
-    '''
-    #return [x for x in lst if x.priority == element]
-    return list(filter(lambda x: x.priority == element, lst))
-
 @transaction.atomic
 def TaskPriorityCheck(priority, user):
     '''
     A function to check if any two tasks have the same priority
     if so, then cascade update the priorities such that no two tasks have the same priority
     '''
-    task_lst = list(
+    task_lst = (
         Task.objects.select_for_update()
         .filter(
             deleted=False,
             user=user,
+            completed= False,
             priority__gte=priority,
         )
-        .order_by("created_date")
+        .order_by("priority")
     )
 
-    while True:
-        dup_prior = dup_elems(
-            task_lst, priority
-        )  # Returns a list containing tasks with same priority        
-        if len(dup_prior) <= 1:
-            break
+    update_lst = []
+    prev = 0
+    for task in task_lst:
+        try:
+            if prev.priority == task.priority:
+                prev.priority += 1
+                update_lst.append(prev)
+            else:
+                prev = task
+        except:
+            prev = task
 
-        task_lst[task_lst.index(dup_prior[0])].priority += 1 
-        priority += 1
-
-    Task.objects.bulk_update(task_lst, ["priority"])
+    Task.objects.bulk_update(update_lst, ["priority"])
 
 
 class GenericTaskCreateView(LoginRequiredMixin, CreateView):
