@@ -16,25 +16,10 @@ from django.views.generic.list import ListView
 from tasks.forms import *
 from tasks.models import Task
 
-"""
-*FIXES*
 
-1. Changed the cascading priority logic (line 91)
-2. Used snake_case for almost all the variables 
-3. Querysets are properly named (line 31)
-4. Fixed the centering issue of UI elements
-"""
-
-
-class TaskCompletedCount:
-    def get_context_data(self, *args, **kwargs):
-        base_qs = Task.objects.filter(user=self.request.user)
-        active_tasks = base_qs.filter(deleted=False)
-        completed_tasks = active_tasks.filter(completed=True)
-        context = super().get_context_data(*args, **kwargs)
-        context["completed_count"] = completed_tasks.count()
-        context["total_count"] = active_tasks.count()
-        return context
+base_query = Task.objects.filter(user=request.user)
+active_tasks = base_qs.filter(deleted=False)
+completed_tasks = active_tasks.filter(completed=True)
 
 
 class RedirectRootToTasks(RedirectView):
@@ -60,7 +45,12 @@ class UserCreateView(CreateView):
 
 
 class GenericCompleteTaskView(AuthorisedTaskManager, View, SingleObjectMixin):
+
     success_url = "/tasks"
+
+    def get(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        return super().get(request, *args, **kwargs)
 
     def post(self, request, *args, **kwargs):
         self.object = self.get_object()
@@ -70,10 +60,17 @@ class GenericCompleteTaskView(AuthorisedTaskManager, View, SingleObjectMixin):
         return HttpResponseRedirect(self.success_url)
 
 
-class GenericAllTasksView(TaskCompletedCount, AuthorisedTaskManager, ListView):
+class GenericAllTasksView(AuthorisedTaskManager, ListView):
+    queryset = active_tasks
     template_name = "all_tasks.html"
     context_object_name = "tasks"
     paginate_by = 4
+
+    def get_context_data(self, *args, **kwargs):
+        context = super(GenericAllTasksView, self).get_context_data(*args, **kwargs)
+        context["completed_count"] = completed_tasks.count()
+        context["total_count"] = active_tasks.count()
+        return context
 
 
 class GenericTaskDeleteView(AuthorisedTaskManager, DeleteView):
@@ -87,13 +84,21 @@ class GenericTaskDetailView(AuthorisedTaskManager, DetailView):
     template_name = "task_detail.html"
 
 
+def dup_elems(lst, element):
+    """
+    Returns a list of duplicate priority elements in the given list of Tasks
+    """
+    # return [x for x in lst if x.priority == element]
+    return list(filter(lambda x: x.priority == element, lst))
+
+
 @transaction.atomic
 def TaskPriorityCheck(priority, user):
     """
     A function to check if any two tasks have the same priority
     if so, then cascade update the priorities such that no two tasks have the same priority
     """
-    task_lst = (
+    task_lst = list(
         Task.objects.select_for_update()
         .filter(
             deleted=False,
@@ -101,25 +106,27 @@ def TaskPriorityCheck(priority, user):
             completed=False,
             priority__gte=priority,
         )
-        .order_by("priority")
+        .order_by("created_date")
     )
 
-    update_lst = []
-    prev = 0
-    for task in task_lst:
-        try:
-            if prev.priority == task.priority:
-                prev.priority += 1
-                update_lst.append(prev)
-            else:
-                prev = task
-        except:
-            prev = task
+    while True:
+        dup_prior = dup_elems(
+            task_lst, priority
+        )  # Returns a list containing tasks with same priority
+        if len(dup_prior) <= 1:
+            break
 
-    Task.objects.bulk_update(update_lst, ["priority"])
+        task_lst[task_lst.index(dup_prior[0])].priority += 1
+        priority += 1
+
+    Task.objects.bulk_update(task_lst, ["priority"])
 
 
-class TaskFormValidMixin:
+class GenericTaskCreateView(LoginRequiredMixin, CreateView):
+    form_class = TaskCreateForm
+    template_name = "task_create.html"
+    success_url = "/tasks"
+
     def form_valid(self, form):
         self.object = form.save()
         self.object.user = self.request.user
@@ -129,36 +136,44 @@ class TaskFormValidMixin:
         return HttpResponseRedirect(self.get_success_url())
 
 
-class GenericTaskCreateView(TaskFormValidMixin, LoginRequiredMixin, CreateView):
-    form_class = TaskCreateForm
-    template_name = "task_create.html"
-    success_url = "/tasks"
-
-
-class GenericTaskUpdateView(TaskFormValidMixin, AuthorisedTaskManager, UpdateView):
+class GenericTaskUpdateView(AuthorisedTaskManager, UpdateView):
     model = Task
     form_class = TaskCreateForm
     template_name = "task_update.html"
     success_url = "/tasks"
 
+    def form_valid(self, form):
+        self.object = form.save()
+        self.object.user = self.request.user
+        priority = self.object.priority
+        self.object.save()
+        TaskPriorityCheck(priority, self.request.user)
+        return HttpResponseRedirect(self.get_success_url())
 
-class GenericCompletedTaskView(TaskCompletedCount, LoginRequiredMixin, ListView):
+
+class GenericCompletedTaskView(LoginRequiredMixin, ListView):
+    queryset = completed_tasks.order_by("priority")
     template_name = "completed.html"
     context_object_name = "tasks"
     paginate_by = 4
 
-    def get_queryset(self):
-        return Task.objects.filter(completed=True, user=self.request.user).order_by(
-            "priority"
+    def get_context_data(self, *args, **kwargs):
+        context = super(GenericCompletedTaskView, self).get_context_data(
+            *args, **kwargs
         )
+        context["completed_count"] = completed_tasks.count()
+        context["total_count"] = active_tasks.count()
+        return context
 
 
-class GenericTaskView(TaskCompletedCount, LoginRequiredMixin, ListView):
+class GenericTaskView(LoginRequiredMixin, ListView):
+    queryset = active_tasks.filter(completed=False)
     template_name = "tasks.html"
     context_object_name = "tasks"
     paginate_by = 4
 
-    def get_queryset(self):
-        base_qs = Task.objects.filter(user=self.request.user)
-        active_tasks = base_qs.filter(deleted=False, completed=False).order_by("priority")
-        return active_tasks
+    def get_context_data(self, *args, **kwargs):
+        context = super(GenericTaskView, self).get_context_data(*args, **kwargs)
+        context["completed_count"] = completed_tasks.count()
+        context["total_count"] = active_tasks.count()
+        return context
