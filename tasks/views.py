@@ -21,7 +21,7 @@ from tasks.models import Task
 
 1. Used snake_case in function names too
 2. Redid the cascading logic (line 90)
-3. Priority Cascade is only performed on when the priority is changed
+3. Priority Cascade is only performed when the priority is changed
 """
 
 
