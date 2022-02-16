@@ -19,10 +19,9 @@ from tasks.models import Task
 """
 *FIXES*
 
-1. Changed the cascading priority logic (line 91)
-2. Used snake_case for almost all the variables 
-3. Querysets are properly named (line 31)
-4. Fixed the centering issue of UI elements
+1. Used snake_case in funtion names too
+2. Redid the cascading logic (line 90)
+3. Priority Cascade is only performed on when the priority is changed
 """
 
 
@@ -88,11 +87,12 @@ class GenericTaskDetailView(AuthorisedTaskManager, DetailView):
 
 
 @transaction.atomic
-def TaskPriorityCheck(priority, user):
+def task_priority_check(priority, user):
     """
     A function to check if any two tasks have the same priority
     if so, then cascade update the priorities such that no two tasks have the same priority
     """
+
     task_lst = (
         Task.objects.select_for_update()
         .filter(
@@ -105,27 +105,26 @@ def TaskPriorityCheck(priority, user):
     )
 
     update_lst = []
-    prev = 0
+
     for task in task_lst:
-        try:
-            if prev.priority == task.priority:
-                prev.priority += 1
-                update_lst.append(prev)
-            else:
-                prev = task
-        except:
-            prev = task
+        if task.priority != priority:
+            break
+        task.priority += 1
+        priority += 1
+        update_lst.append(task)
 
     Task.objects.bulk_update(update_lst, ["priority"])
 
 
 class TaskFormValidMixin:
     def form_valid(self, form):
+        priority = form.cleaned_data["priority"]
+        if form.cleaned_data["completed"] == False:
+            if form.has_changed() and "priority" in form.changed_data:
+                task_priority_check(priority, self.request.user)
         self.object = form.save()
         self.object.user = self.request.user
-        priority = self.object.priority
         self.object.save()
-        TaskPriorityCheck(priority, self.request.user)
         return HttpResponseRedirect(self.get_success_url())
 
 
@@ -160,5 +159,7 @@ class GenericTaskView(TaskCompletedCount, LoginRequiredMixin, ListView):
 
     def get_queryset(self):
         base_qs = Task.objects.filter(user=self.request.user)
-        active_tasks = base_qs.filter(deleted=False, completed=False).order_by("priority")
+        active_tasks = base_qs.filter(deleted=False, completed=False).order_by(
+            "priority"
+        )
         return active_tasks
